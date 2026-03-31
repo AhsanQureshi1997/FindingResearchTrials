@@ -397,6 +397,89 @@ th, td {
 }
 
 </style>
+
+<style id="layout-preview-patch">
+/* Preview layout cleanup */
+.right-panel,
+.content-panel,
+.results-panel,
+.dashboard-main,
+.dashboard-content {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  min-width: 0 !important;
+}
+
+.specialty-panel,
+.summary-panel,
+.bottom-right {
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  order: 2 !important;
+}
+
+.table-wrap, .table-container, .results-table-wrap {
+  max-height: 520px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+th:nth-child(7), td:nth-child(7) {
+  width: 180px !important;
+  max-width: 180px !important;
+}
+
+th:nth-child(8), td:nth-child(8) {
+  width: 170px !important;
+  max-width: 170px !important;
+}
+
+th, td {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  vertical-align: top !important;
+}
+
+.specialty-panel table,
+.summary-panel table {
+  table-layout: auto !important;
+}
+
+.specialty-panel th,
+.specialty-panel td,
+.summary-panel th,
+.summary-panel td {
+  writing-mode: horizontal-tb !important;
+  transform: none !important;
+  white-space: normal !important;
+  text-align: left !important;
+}
+
+.specialty-panel .mini-card,
+.summary-panel .mini-card,
+.specialty-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+@media (max-width: 1200px) {
+  .specialty-panel .mini-card,
+  .summary-panel .mini-card,
+  .specialty-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+</style>
+
 </head>
 <body>
   <div class="wrap">
@@ -984,6 +1067,32 @@ window.addEventListener('DOMContentLoaded', () => {
     obs.observe(document.body, { childList: true, subtree: true });
   });
 })();
+</script>
+
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const candidates = Array.from(document.querySelectorAll('*')).filter(el => {
+    const txt = (el.textContent || '').replace(/\s+/g,' ').trim().toLowerCase();
+    return txt.includes('specialty summary') && el.children.length > 0;
+  });
+  const specialty = candidates.find(el => el.offsetHeight > 80) || candidates[0];
+  const trialListHeading = Array.from(document.querySelectorAll('h1,h2,h3,div,strong')).find(el =>
+    /trial list/i.test((el.textContent || '').trim())
+  );
+  if (specialty && trialListHeading) {
+    let trialPanel = trialListHeading.closest('section,article,div');
+    for (let i = 0; i < 4 && trialPanel; i++) {
+      if (trialPanel.querySelector && trialPanel.querySelector('table')) break;
+      trialPanel = trialPanel.parentElement;
+    }
+    if (trialPanel && trialPanel.parentElement && specialty.parentElement !== trialPanel.parentElement) {
+      trialPanel.parentElement.appendChild(specialty);
+    } else if (trialPanel && trialPanel.parentElement) {
+      trialPanel.insertAdjacentElement('afterend', specialty);
+    }
+  }
+});
 </script>
 
 </body>
