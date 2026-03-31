@@ -916,5 +916,75 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+
+<script>
+(function () {
+  function cleanPhoenixLocations() {
+    const tables = Array.from(document.querySelectorAll('table'));
+    tables.forEach((table) => {
+      const headerCells = Array.from(table.querySelectorAll('thead th, tr th'));
+      if (!headerCells.length) return;
+
+      const phoenixIdx = headerCells.findIndex(th =>
+        (th.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase().includes('phoenix locations')
+      );
+      if (phoenixIdx === -1) return;
+
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      rows.forEach((row) => {
+        const cells = row.querySelectorAll('td');
+        if (!cells[phoenixIdx]) return;
+        const cell = cells[phoenixIdx];
+
+        const keepNode = (node) => {
+          const txt = (node.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          return txt.includes('phoenix');
+        };
+
+        const directChildren = Array.from(cell.children);
+        if (directChildren.length) {
+          let kept = 0;
+          directChildren.forEach((child) => {
+            if (keepNode(child)) {
+              child.style.display = '';
+              kept += 1;
+            } else {
+              child.remove();
+            }
+          });
+          if (kept === 0) {
+            const txt = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+            const matches = txt
+              .split(/(?<=\b(?:Arizona|AZ))\s+(?=[A-Z])|[\n\r]+|(?<=\.)\s+/)
+              .map(s => s.trim())
+              .filter(Boolean)
+              .filter(s => /phoenix/i.test(s));
+            cell.textContent = matches.length ? matches.join('\n') : 'Phoenix only filter applied';
+            cell.style.whiteSpace = 'pre-line';
+          }
+        } else {
+          const txt = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+          const matches = txt
+            .split(/(?<=\b(?:Arizona|AZ))\s+(?=[A-Z])|[\n\r]+|(?<=\.)\s+/)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .filter(s => /phoenix/i.test(s));
+          cell.textContent = matches.length ? matches.join('\n') : 'Phoenix only filter applied';
+          cell.style.whiteSpace = 'pre-line';
+        }
+      });
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    setTimeout(cleanPhoenixLocations, 500);
+    setTimeout(cleanPhoenixLocations, 1200);
+    setTimeout(cleanPhoenixLocations, 2500);
+    const obs = new MutationObserver(() => cleanPhoenixLocations());
+    obs.observe(document.body, { childList: true, subtree: true });
+  });
+})();
+</script>
+
 </body>
 </html>
