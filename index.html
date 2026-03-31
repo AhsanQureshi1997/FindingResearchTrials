@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UACOMP Active Trials Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --text: #16202a;
+      --muted: #5c6b7a;
+      --line: #dde5ee;
+      --accent: #0f62fe;
+      --accent-2: #eef4ff;
+      --good: #1f8f4e;
+      --warn: #b26a00;
+      --chip: #eef2f7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 20px;
+      max-width: 980px;
+      line-height: 1.45;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 1px 2px rgba(16,24,40,.04);
+    }
+    .panel.pad { padding: 18px; }
+    .stack > * + * { margin-top: 14px; }
+    .label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    textarea, input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .metric .k { color: var(--muted); font-size: 12px; margin-bottom: 8px; font-weight: 700; }
+    .metric .v { font-size: 28px; font-weight: 800; }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+    .toolbar .title { font-size: 18px; font-weight: 800; }
+    .toolbar .mini { color: var(--muted); font-size: 13px; }
+    .table-wrap { overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 980px;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #fbfcfe;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      color: var(--muted);
+    }
+    .chip {
+      display: inline-block;
+      background: var(--chip);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      margin: 2px 4px 2px 0;
+      font-size: 12px;
+      color: #334155;
+      white-space: nowrap;
+    }
+    .link {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .status {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .s-recruiting, .s-enrolling_by_invitation { background: #eaf8ef; color: var(--good); }
+    .s-active_not_recruiting, .s-not_yet_recruiting { background: #fff6e8; color: var(--warn); }
+    .muted { color: var(--muted); }
+    .foot {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .empty, .loading {
+      padding: 28px 18px;
+      color: var(--muted);
+    }
+    .small { font-size: 12px; color: var(--muted); }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>UACOMP Active Trials Dashboard</h1>
+    <div class="sub">
+      This prototype pulls active studies from the public ClinicalTrials.gov API and tries to approximate UACOMP-related activity by searching across multiple institutional aliases. Because clinical trial records are not always tagged to the medical school using one exact name, the best version of this tool searches several UArizona and Banner-Phoenix variants, then de-duplicates by NCT ID.
+    </div>
+
+    <div class="grid">
+      <div class="panel pad stack">
+        <div>
+          <label class="label" for="terms">Institution aliases to search, one per line</label>
+          <textarea id="terms">University of Arizona College of Medicine Phoenix
+Banner - University Medical Center Phoenix
+University of Arizona Phoenix
+University of Arizona Health Sciences Phoenix</textarea>
+          <div class="small">Tip: add investigator names, departments, or center names if you want broader recall.</div>
+        </div>
+
+        <div>
+          <label class="label" for="status">Study statuses to include</label>
+          <select id="status" multiple size="4">
+            <option selected value="RECRUITING">Recruiting</option>
+            <option selected value="ENROLLING_BY_INVITATION">Enrolling by invitation</option>
+            <option selected value="ACTIVE_NOT_RECRUITING">Active, not recruiting</option>
+            <option selected value="NOT_YET_RECRUITING">Not yet recruiting</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <div>
+            <label class="label" for="cityFilter">Location city filter</label>
+            <input id="cityFilter" value="Phoenix" />
+          </div>
+          <div>
+            <label class="label" for="pageSize">Max results per alias</label>
+            <input id="pageSize" type="number" value="100" min="20" max="1000" step="20" />
+          </div>
+        </div>
+
+        <div>
+          <label class="label" for="keywordFilter">Optional keyword filter</label>
+          <input id="keywordFilter" placeholder="cardiology, oncology, pediatrics, opioid..." />
+        </div>
+
+        <div class="btns">
+          <button class="primary" id="loadBtn">Load active trials</button>
+          <button id="csvBtn">Export CSV</button>
+          <button id="resetBtn">Reset defaults</button>
+        </div>
+
+        <div class="foot">
+          Source endpoint: ClinicalTrials.gov public API.<br>
+          Method: query multiple aliases, merge all returned studies, then deduplicate by NCT ID.<br>
+          Best use: admissions-facing proof of concept, faculty outreach, trial landscape scans, and identifying investigators or departments with live study activity.
+        </div>
+      </div>
+
+      <div>
+        <div class="metrics">
+          <div class="metric"><div class="k">Total active trials</div><div class="v" id="mTotal">0</div></div>
+          <div class="metric"><div class="k">Recruiting</div><div class="v" id="mRecruiting">0</div></div>
+          <div class="metric"><div class="k">Active, not recruiting</div><div class="v" id="mActive">0</div></div>
+          <div class="metric"><div class="k">Unique conditions</div><div class="v" id="mConditions">0</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="toolbar">
+            <div>
+              <div class="title">Trial list</div>
+              <div class="mini" id="resultMeta">No studies loaded yet.</div>
+            </div>
+            <div class="small">Click an NCT ID to open the full record.</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>NCT ID</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Phase</th>
+                  <th>Conditions</th>
+                  <th>Lead sponsor</th>
+                  <th>Phoenix locations</th>
+                  <th>Matched aliases</th>
+                </tr>
+              </thead>
+              <tbody id="tbody">
+                <tr><td colspan="8" class="empty">Use the controls on the left to load studies.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_TERMS = [
+      'University of Arizona College of Medicine Phoenix',
+      'Banner - University Medical Center Phoenix',
+      'University of Arizona Phoenix',
+      'University of Arizona Health Sciences Phoenix'
+    ];
+
+    const fields = [
+      'NCTId',
+      'BriefTitle',
+      'OverallStatus',
+      'Phase',
+      'Condition',
+      'LeadSponsorName',
+      'LocationFacility',
+      'LocationCity',
+      'LocationState',
+      'LocationCountry'
+    ];
+
+    const state = { rows: [] };
+
+    function selectedStatuses() {
+      return Array.from(document.getElementById('status').selectedOptions).map(o => o.value);
+    }
+
+    function csvEscape(value) {
+      const s = String(value ?? '');
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function toArray(value) {
+      if (Array.isArray(value)) return value;
+      if (value == null) return [];
+      return [value];
+    }
+
+    function clean(str) {
+      return String(str || '').trim();
+    }
+
+    function statusClass(status) {
+      return 's-' + String(status || '').toLowerCase();
+    }
+
+    async function fetchByAlias(alias, statuses, pageSize) {
+      const url = new URL('https://clinicaltrials.gov/api/query/studies');
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('query.term', alias);
+      url.searchParams.set('pageSize', String(pageSize));
+      url.searchParams.set('fields', fields.join(','));
+      if (statuses.length) url.searchParams.set('filter.overallStatus', statuses.join(','));
+
+      const res = await fetch(url.toString());
+      if (!res.ok) throw new Error(`ClinicalTrials.gov request failed for alias: ${alias}`);
+      const data = await res.json();
+      return data.studies || data.Studies || [];
+    }
+
+    function normalizeStudy(study, alias) {
+      const ps = study.protocolSection || {};
+      const idMod = ps.identificationModule || {};
+      const statusMod = ps.statusModule || {};
+      const sponsorMod = ps.sponsorCollaboratorsModule || {};
+      const condMod = ps.conditionsModule || {};
+      const designMod = ps.designModule || {};
+      const contactsMod = ps.contactsLocationsModule || {};
+
+      const nctId = clean(idMod.nctId || study.NCTId?.[0]);
+      const title = clean(idMod.briefTitle || study.BriefTitle?.[0]);
+      const status = clean(statusMod.overallStatus || study.OverallStatus?.[0]);
+      const phase = toArray(designMod.phases || study.Phase).join(', ');
+      const conditions = toArray(condMod.conditions || study.Condition).map(clean).filter(Boolean);
+      const sponsor = clean(sponsorMod.leadSponsor?.name || study.LeadSponsorName?.[0]);
+
+      const locations = (contactsMod.locations || []).map(loc => ({
+        facility: clean(loc.facility),
+        city: clean(loc.city),
+        state: clean(loc.state),
+        country: clean(loc.country)
+      }));
+
+      if (!locations.length && study.LocationFacility) {
+        const facilities = toArray(study.LocationFacility);
+        const cities = toArray(study.LocationCity);
+        const states = toArray(study.LocationState);
+        const countries = toArray(study.LocationCountry);
+        for (let i = 0; i < facilities.length; i++) {
+          locations.push({
+            facility: clean(facilities[i]),
+            city: clean(cities[i]),
+            state: clean(states[i]),
+            country: clean(countries[i])
+          });
+        }
+      }
+
+      return { nctId, title, status, phase, conditions, sponsor, locations, aliases: new Set([alias]) };
+    }
+
+    function mergeStudies(studies, cityFilter, keywordFilter) {
+      const map = new Map();
+      for (const { study, alias } of studies) {
+        const row = normalizeStudy(study, alias);
+        if (!row.nctId) continue;
+
+        const cityHit = !cityFilter || row.locations.some(l => l.city.toLowerCase().includes(cityFilter));
+        const kw = keywordFilter.toLowerCase();
+        const keywordHit = !kw || [
+          row.title,
+          row.sponsor,
+          row.phase,
+          row.status,
+          ...row.conditions,
+          ...row.locations.map(l => [l.facility, l.city, l.state].join(' '))
+        ].join(' ').toLowerCase().includes(kw);
+
+        if (!cityHit || !keywordHit) continue;
+
+        if (map.has(row.nctId)) {
+          const existing = map.get(row.nctId);
+          row.aliases.forEach(a => existing.aliases.add(a));
+          const seenLocs = new Set(existing.locations.map(l => `${l.facility}|${l.city}|${l.state}|${l.country}`));
+          for (const loc of row.locations) {
+            const key = `${loc.facility}|${loc.city}|${loc.state}|${loc.country}`;
+            if (!seenLocs.has(key)) existing.locations.push(loc);
+          }
+        } else {
+          map.set(row.nctId, row);
+        }
+      }
+      return Array.from(map.values()).sort((a, b) => {
+        const order = ['RECRUITING', 'ENROLLING_BY_INVITATION', 'NOT_YET_RECRUITING', 'ACTIVE_NOT_RECRUITING'];
+        const ai = order.indexOf(a.status);
+        const bi = order.indexOf(b.status);
+        if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        return a.title.localeCompare(b.title);
+      });
+    }
+
+    function render(rows, aliasCount) {
+      state.rows = rows;
+      document.getElementById('mTotal').textContent = rows.length;
+      document.getElementById('mRecruiting').textContent = rows.filter(r => r.status === 'RECRUITING').length;
+      document.getElementById('mActive').textContent = rows.filter(r => r.status === 'ACTIVE_NOT_RECRUITING').length;
+      document.getElementById('mConditions').textContent = new Set(rows.flatMap(r => r.conditions)).size;
+      document.getElementById('resultMeta').textContent = `${rows.length} unique active trials found across ${aliasCount} alias searches.`;
+
+      const tbody = document.getElementById('tbody');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">No studies matched the current filters. Try removing the keyword or city filter, or add more aliases.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        const locs = r.locations.length
+          ? r.locations.map(l => `<div>${[l.facility, l.city, l.state].filter(Boolean).join(', ')}</div>`).join('')
+          : '<span class="muted">None parsed</span>';
+        const conds = r.conditions.length
+          ? r.conditions.slice(0, 5).map(c => `<span class="chip">${escapeHtml(c)}</span>`).join('')
+          : '<span class="muted">None listed</span>';
+        const aliases = Array.from(r.aliases).map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('');
+        return `
+          <tr>
+            <td><a class="link" href="https://clinicaltrials.gov/study/${encodeURIComponent(r.nctId)}" target="_blank" rel="noopener">${escapeHtml(r.nctId)}</a></td>
+            <td>${escapeHtml(r.title || '')}</td>
+            <td><span class="status ${statusClass(r.status)}">${escapeHtml((r.status || '').replaceAll('_', ' '))}</span></td>
+            <td>${escapeHtml(r.phase || 'N/A')}</td>
+            <td>${conds}</td>
+            <td>${escapeHtml(r.sponsor || '')}</td>
+            <td>${locs}</td>
+            <td>${aliases}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    async function loadTrials() {
+      const loadBtn = document.getElementById('loadBtn');
+      const tbody = document.getElementById('tbody');
+      const aliases = document.getElementById('terms').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const statuses = selectedStatuses();
+      const cityFilter = document.getElementById('cityFilter').value.trim().toLowerCase();
+      const keywordFilter = document.getElementById('keywordFilter').value.trim();
+      const pageSize = Math.max(20, Math.min(1000, Number(document.getElementById('pageSize').value || 100)));
+
+      loadBtn.disabled = true;
+      tbody.innerHTML = `<tr><td colspan="8" class="loading">Loading studies from ClinicalTrials.gov...</td></tr>`;
+
+      try {
+        const nested = await Promise.all(aliases.map(async alias => {
+          const studies = await fetchByAlias(alias, statuses, pageSize);
+          return studies.map(study => ({ study, alias }));
+        }));
+        const merged = mergeStudies(nested.flat(), cityFilter, keywordFilter);
+        render(merged, aliases.length);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty">${escapeHtml(err.message)}. If the API changed, update the endpoint or fields list in this file.</td></tr>`;
+        document.getElementById('resultMeta').textContent = 'Error loading studies.';
+      } finally {
+        loadBtn.disabled = false;
+      }
+    }
+
+    function exportCsv() {
+      if (!state.rows.length) return;
+      const header = [
+        'NCT ID', 'Title', 'Status', 'Phase', 'Conditions', 'Lead Sponsor', 'Phoenix Locations', 'Matched Aliases'
+      ];
+      const lines = [header.map(csvEscape).join(',')];
+      for (const r of state.rows) {
+        const row = [
+          r.nctId,
+          r.title,
+          r.status,
+          r.phase,
+          r.conditions.join(' | '),
+          r.sponsor,
+          r.locations.map(l => [l.facility, l.city, l.state, l.country].filter(Boolean).join(' / ')).join(' | '),
+          Array.from(r.aliases).join(' | ')
+        ];
+        lines.push(row.map(csvEscape).join(','));
+      }
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'uacomp_active_trials.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function resetDefaults() {
+      document.getElementById('terms').value = DEFAULT_TERMS.join('\n');
+      document.getElementById('cityFilter').value = 'Phoenix';
+      document.getElementById('keywordFilter').value = '';
+      document.getElementById('pageSize').value = '100';
+      Array.from(document.getElementById('status').options).forEach(opt => opt.selected = true);
+    }
+
+    document.getElementById('loadBtn').addEventListener('click', loadTrials);
+    document.getElementById('csvBtn').addEventListener('click', exportCsv);
+    document.getElementById('resetBtn').addEventListener('click', resetDefaults);
+  </script>
+</body>
+</html>
