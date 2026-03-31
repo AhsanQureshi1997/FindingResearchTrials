@@ -357,7 +357,46 @@
         grid-template-columns: 1fr;
       }
     }
-  </style>
+  
+/* Tightened layout tuning */
+.dashboard-shell, .app-shell, .main-layout {
+  align-items: start;
+}
+.right-panel, .content-panel, .results-panel {
+  min-width: 0;
+}
+.panel, .card, .metric-card {
+  padding: 12px !important;
+}
+h1 { font-size: 28px !important; line-height: 1.15; margin: 0 0 10px 0; }
+h2 { font-size: 18px !important; line-height: 1.2; margin: 0 0 6px 0; }
+p, label, button, input, select, textarea, th, td, li, span, div {
+  font-size: 14px;
+}
+.stats-grid, .metrics-grid {
+  gap: 12px !important;
+}
+.table-wrap, .table-container, .results-table-wrap {
+  max-height: 360px !important;
+  overflow: auto !important;
+}
+table {
+  width: 100%;
+  table-layout: fixed;
+  font-size: 13px !important;
+}
+th, td {
+  padding: 8px 10px !important;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.bottom-right, .specialty-panel, .summary-panel {
+  max-height: 360px !important;
+  overflow: auto !important;
+}
+
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -860,5 +899,22 @@ University of Arizona Health Sciences Phoenix</textarea>
     document.getElementById('csvBtn').addEventListener('click', exportCsv);
     document.getElementById('resetBtn').addEventListener('click', resetDefaults);
   </script>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const btn =
+    document.querySelector('#loadTrialsBtn') ||
+    document.querySelector('button[data-action="load-trials"]') ||
+    Array.from(document.querySelectorAll('button')).find(b => /load active trials/i.test(b.textContent || ''));
+  if (btn) {
+    setTimeout(() => btn.click(), 150);
+  } else if (typeof loadActiveTrials === 'function') {
+    setTimeout(() => loadActiveTrials(), 150);
+  } else if (typeof loadTrials === 'function') {
+    setTimeout(() => loadTrials(), 150);
+  }
+});
+</script>
+
 </body>
 </html>
