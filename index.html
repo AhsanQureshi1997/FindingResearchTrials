@@ -480,6 +480,109 @@ th, td {
 }
 </style>
 
+
+<style id="compact-dashboard-patch">
+/* Compact table layout */
+.table-wrap, .table-container, .results-table-wrap {
+  max-height: 560px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+th, td {
+  padding: 10px 12px !important;
+  vertical-align: top !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  line-height: 1.2 !important;
+}
+
+th:nth-child(1), td:nth-child(1) { width: 120px !important; }
+th:nth-child(2), td:nth-child(2) { width: 250px !important; }
+th:nth-child(3), td:nth-child(3) { width: 120px !important; }
+th:nth-child(4), td:nth-child(4) { width: 90px !important; }
+th:nth-child(5), td:nth-child(5) { width: 150px !important; }
+th:nth-child(6), td:nth-child(6) { width: 120px !important; }
+th:nth-child(7), td:nth-child(7) { width: 160px !important; }
+th:nth-child(8), td:nth-child(8) { width: 150px !important; }
+
+td:nth-child(2) {
+  max-width: 250px !important;
+}
+
+.title-clamp {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 4 !important;
+  overflow: hidden !important;
+}
+
+.compact-pills {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  align-items: flex-start !important;
+}
+
+.compact-pill {
+  display: inline-block !important;
+  background: #eef2f7 !important;
+  border: 1px solid #d7dde8 !important;
+  border-radius: 999px !important;
+  padding: 3px 8px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.compact-more {
+  display: inline-block !important;
+  font-size: 12px !important;
+  color: #5f6b7a !important;
+  padding: 4px 0 !important;
+}
+
+.location-name {
+  display: block !important;
+  font-weight: 500 !important;
+}
+
+.location-city {
+  display: block !important;
+  font-size: 12px !important;
+  color: #667085 !important;
+  margin-top: 2px !important;
+}
+
+.alias-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.alias-pill {
+  display: inline-block !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  background: #f4f6f8 !important;
+  border: 1px solid #dde3ea !important;
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+</style>
+
 </head>
 <body>
   <div class="wrap">
@@ -1093,6 +1196,108 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
+</script>
+
+
+<script id="compact-row-render-patch">
+(function () {
+  function clampTitle(cell) {
+    if (!cell || cell.dataset.compactedTitle === '1') return;
+    const text = (cell.textContent || '').trim();
+    if (!text) return;
+    cell.innerHTML = '<div class="title-clamp"></div>';
+    cell.firstElementChild.textContent = text;
+    cell.dataset.compactedTitle = '1';
+  }
+
+  function compactConditions(cell) {
+    if (!cell || cell.dataset.compactedConditions === '1') return;
+    const pills = Array.from(cell.querySelectorAll('*')).filter(el => {
+      const txt = (el.textContent || '').trim();
+      return txt.length > 0;
+    });
+    let items = pills.map(el => (el.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+
+    if (!items.length) {
+      const raw = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+      if (raw) items = raw.split(/\s{2,}|,\s+(?=[A-Z])/).map(s => s.trim()).filter(Boolean);
+    }
+
+    if (!items.length) return;
+
+    const visible = items.slice(0, 2);
+    const remaining = items.length - visible.length;
+    let inner = '<div class="compact-pills">';
+    inner += visible.map(item => `<span class="compact-pill" title="${item.replace(/"/g, '&quot;')}">${item}</span>`).join('');
+    if (remaining > 0) inner += `<span class="compact-more">+${remaining} more</span>`;
+    inner += '</div>';
+    cell.innerHTML = inner;
+    cell.dataset.compactedConditions = '1';
+  }
+
+  function compactLocations(cell) {
+    if (!cell || cell.dataset.compactedLocations === '1') return;
+    const raw = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!raw) return;
+
+    const phoenixMatches = raw.match(/[^,]+,\s*Phoenix,\s*Arizona/gi) || raw.match(/[^,]+Phoenix[^,]*/gi) || [];
+    let chosen = phoenixMatches[0] || raw;
+    chosen = chosen.replace(/\s+/g, ' ').trim();
+
+    let name = chosen.replace(/,\s*Phoenix,\s*Arizona/i, '').trim();
+    if (!name) name = chosen;
+
+    cell.innerHTML = `<span class="location-name">${name}</span><span class="location-city">Phoenix</span>`;
+    cell.dataset.compactedLocations = '1';
+  }
+
+  function compactAliases(cell) {
+    if (!cell || cell.dataset.compactedAliases === '1') return;
+    let items = Array.from(cell.querySelectorAll('*')).map(el => (el.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    if (!items.length) {
+      const raw = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+      if (raw) items = raw.split(/(?<=Phoenix)\s+(?=[A-Z])|[\n\r]+/).map(s => s.trim()).filter(Boolean);
+    }
+    if (!items.length) return;
+
+    const visible = items.slice(0, 2);
+    const remaining = items.length - visible.length;
+    let inner = '<div class="alias-stack">';
+    inner += visible.map(item => `<span class="alias-pill" title="${item.replace(/"/g, '&quot;')}">${item}</span>`).join('');
+    if (remaining > 0) inner += `<span class="compact-more">+${remaining} more</span>`;
+    inner += '</div>';
+    cell.innerHTML = inner;
+    cell.dataset.compactedAliases = '1';
+  }
+
+  function compactTable() {
+    const tables = Array.from(document.querySelectorAll('table'));
+    tables.forEach(table => {
+      const headers = Array.from(table.querySelectorAll('thead th, tr th')).map(th =>
+        (th.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase()
+      );
+      if (!headers.length || !headers.some(h => h.includes('nct id'))) return;
+
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 8) return;
+        clampTitle(cells[1]);
+        compactConditions(cells[4]);
+        compactLocations(cells[6]);
+        compactAliases(cells[7]);
+      });
+    });
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(compactTable, 700);
+    setTimeout(compactTable, 1500);
+    setTimeout(compactTable, 3000);
+    const observer = new MutationObserver(() => compactTable());
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+})();
 </script>
 
 </body>
